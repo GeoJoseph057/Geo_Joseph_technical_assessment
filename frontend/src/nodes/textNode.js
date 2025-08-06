@@ -52,126 +52,73 @@ export const TextNode = ({ id, data, selected }) => {
     }, 0);
     
     const colors = [
-      '#3b82f6', // blue
-      '#10b981', // green
-      '#f59e0b', // amber
-      '#ef4444', // red
-      '#8b5cf6', // violet
-      '#ec4899', // pink
-      '#06b6d4', // cyan
-      '#f97316', // orange
+      'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 'bg-red-500',
+      'bg-purple-500', 'bg-pink-500', 'bg-cyan-500', 'bg-orange-500'
     ];
 
     return colors[Math.abs(hash) % colors.length];
   }
 
   return (
-    <div style={{
-      width: 300,
-      position: 'relative',
-      backgroundColor: darkMode ? '#0f172a' : '#ffffff',
-      border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
-      borderRadius: '8px',
-      overflow: 'hidden',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
-      borderColor: selected ? '#3b82f6' : undefined
-    }}>
+    <div className={`
+      w-72 rounded-lg shadow-lg border transition-all relative
+      ${selected ? 'ring-2 ring-green-500' : ''}
+      ${darkMode 
+        ? 'bg-gray-800 border-gray-700' 
+        : 'bg-white border-gray-200'
+      }
+    `}>
       {/* Node Header */}
-      <div style={{
-        padding: '12px 16px',
-        backgroundColor: '#10b981', // Green color matching the Output node
-        color: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Type size={16} style={{ marginRight: '8px', color: '#ffffff' }} />
-          <span style={{ 
-            fontWeight: 600,
-            fontSize: '14px',
-            color: '#ffffff'
-          }}>Text</span>
+      <div className="bg-green-500 text-white p-3 rounded-t-lg flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <Type size={16} />
+          <span className="font-semibold text-sm">Text</span>
         </div>
         {variables.length > 0 && (
-          <div style={{
-            padding: '1px 4px',
-            borderRadius: '4px',
-            backgroundColor: darkMode ? '#374151' : '#e2e8f0',
-            fontSize: '11px',
-            fontWeight: 500,
-            color: darkMode ? '#d1d5db' : '#4b5563'
-          }}>
+          <span className="bg-green-600 px-2 py-1 rounded text-xs font-medium">
             {variables.length}
-          </div>
+          </span>
         )}
       </div>
+      
+      <div className="p-4 space-y-3">
+        <div>
+          <textarea
+            ref={textareaRef}
+            value={data.text || ''}
+            onChange={onChange}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            onInput={() => {
+              if (textareaRef.current) {
+                textareaRef.current.style.height = 'auto';
+                textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+              }
+            }}
+            placeholder="Enter text here..."
+            className={`w-full p-2 rounded-lg border text-sm resize-none overflow-hidden ${
+              darkMode 
+                ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:border-green-500' 
+                : 'bg-gray-100 border-gray-300 text-gray-800 placeholder-gray-500 focus:border-green-500'
+            } focus:outline-none focus:ring-2 focus:ring-green-500/20`}
+            style={{ minHeight: '60px' }}
+          />
+        </div>
 
-      {/* Node Content */}
-      <div style={{ padding: '16px' }}>
-        <textarea
-          ref={textareaRef}
-          style={{
-            width: '100%',
-            minHeight: '60px',
-            padding: '10px 12px',
-            borderRadius: '6px',
-            resize: 'none',
-            backgroundColor: darkMode ? '#1e293b' : '#f8fafc',
-            color: darkMode ? '#e5e7eb' : '#0f172a',
-            border: `1px solid ${darkMode ? '#334155' : '#cbd5e1'}`,
-            outline: 'none',
-            fontSize: '14px',
-            lineHeight: '1.5',
-            overflow: 'hidden', // Hide scrollbar
-          }}
-          placeholder="Enter text here..."
-          value={data.text || ''}
-          onChange={onChange}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          onInput={() => {
-            if (textareaRef.current) {
-              // Auto-resize logic
-              textareaRef.current.style.height = 'auto';
-              textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-            }
-          }}
-        />
-
-        {/* Variables Display - Styled like Output */}
+        {/* Variables Display */}
         {variables.length > 0 && (
-          <div style={{ 
-            marginTop: '12px'
-          }}>
-            <div style={{ 
-              marginBottom: '6px', 
-              color: darkMode ? '#94a3b8' : '#64748b',
-              fontWeight: 500,
-              fontSize: '12px',
-              display: 'flex',
-              alignItems: 'center',
-            }}>
+          <div className="space-y-2">
+            <div className={`text-xs font-medium ${
+              darkMode ? 'text-gray-300' : 'text-gray-600'
+            }`}>
               Variables
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            <div className="flex flex-wrap gap-2">
               {variables.map(variable => (
-                <div key={variable} style={{
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  color: darkMode ? '#f1f5f9' : '#1e293b',
-                  backgroundColor: darkMode ? '#334155' : '#e2e8f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}>
-                  <span style={{ 
-                    width: '6px', 
-                    height: '6px', 
-                    borderRadius: '50%', 
-                    backgroundColor: getVariableColor(variable),
-                    marginRight: '6px'
-                  }}></span>
+                <div 
+                  key={variable}
+                  className={`px-2 py-1 rounded text-xs font-medium text-white ${getVariableColor(variable)}`}
+                >
                   {variable}
                 </div>
               ))}
@@ -185,44 +132,52 @@ export const TextNode = ({ id, data, selected }) => {
         type="source"
         position={Position.Right}
         id={`${id}-output`}
-        style={{ 
-          background: '#10b981', // Green color matching header
-          top: '30px',
-          width: '10px',
-          height: '10px',
-          border: `2px solid ${darkMode ? '#0f172a' : '#ffffff'}`
+        style={{
+          width: '12px',
+          height: '12px',
+          background: '#10b981',
+          border: '2px solid #ffffff'
         }}
       />
 
       {/* Variable Handles */}
-      {variables.map((variable, index) => (
-        <React.Fragment key={`handle-${variable}`}>
-          <Handle
-            type="target"
-            position={Position.Left}
-            id={`${id}-var-${variable}`}
-            style={{ 
-              top: `${60 + (index * 26)}px`,
-              background: getVariableColor(variable),
-              border: `2px solid ${darkMode ? '#0f172a' : '#ffffff'}`,
-              width: '10px',
-              height: '10px'
-            }}
-          />
-          <div 
-            style={{
-              position: 'absolute',
-              left: '20px',
-              top: `${56 + (index * 26)}px`,
-              fontSize: '11px',
-              color: darkMode ? '#cbd5e1' : '#475569',
-              pointerEvents: 'none'
-            }}
-          >
-            {variable}
-          </div>
-        </React.Fragment>
-      ))}
+      {variables.map((variable, index) => {
+        const colorMap = {
+          'bg-blue-500': '#3b82f6',
+          'bg-green-500': '#10b981',
+          'bg-yellow-500': '#eab308',
+          'bg-red-500': '#ef4444',
+          'bg-purple-500': '#8b5cf6',
+          'bg-pink-500': '#ec4899',
+          'bg-cyan-500': '#06b6d4',
+          'bg-orange-500': '#f97316'
+        };
+        
+        return (
+          <React.Fragment key={`handle-${variable}`}>
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={`${id}-var-${variable}`}
+              style={{
+                width: '12px',
+                height: '12px',
+                background: colorMap[getVariableColor(variable)] || '#3b82f6',
+                border: '2px solid #ffffff',
+                top: `${60 + (index * 26)}px`
+              }}
+            />
+            <div 
+              className={`absolute left-5 text-xs pointer-events-none ${
+                darkMode ? 'text-gray-300' : 'text-gray-600'
+              }`}
+              style={{ top: `${56 + (index * 26)}px` }}
+            >
+              {variable}
+            </div>
+          </React.Fragment>
+        );
+      })}
     </div>
   );
 }
