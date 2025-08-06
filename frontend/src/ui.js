@@ -15,7 +15,7 @@ import { TimerNode } from './nodes/timerNode';
 import { FilterNode } from './nodes/filterNode';
 import { DataFormatNode } from './nodes/dataFormatNode';
 import { NotificationNode } from './nodes/notificationNode';
-import { ZoomIn, ZoomOut, Maximize, RotateCcw, AlignJustify } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, RotateCcw } from 'lucide-react';
 
 import 'reactflow/dist/style.css';
 
@@ -107,15 +107,20 @@ export const PipelineUI = ({ darkMode = true }) => {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  // Select all nodes function
+  // Select all nodes function - only when no nodes are selected
   const selectAllNodes = useCallback(() => {
     if (nodes.length > 0) {
-      const selectChanges = nodes.map((node) => ({
-        id: node.id,
-        type: 'select',
-        selected: true,
-      }));
-      onNodesChange(selectChanges);
+      // Check if any nodes are currently selected
+      const hasSelectedNodes = nodes.some(node => node.selected);      
+      // Only select all nodes if none are currently selected
+      if (!hasSelectedNodes) {
+        const selectChanges = nodes.map((node) => ({
+          id: node.id,
+          type: 'select',
+          selected: true,
+        }));
+        onNodesChange(selectChanges);
+      }
     }
   }, [nodes, onNodesChange]);
 
@@ -155,176 +160,6 @@ export const PipelineUI = ({ darkMode = true }) => {
       reactFlowInstance.zoomOut();
     }
   };
-
-  const autoAlign = () => {
-    if (!reactFlowInstance || nodes.length === 0) return;
-
-    // Enhanced flow-based layout algorithm
-    const nodeMap = new Map(nodes.map(node => [node.id, { ...node, level: -1, processed: false }]));
-    
-    // Analyze node types and connections
-    const getNodeType = (nodeId) => {
-      const node = nodes.find(n => n.id === nodeId);
-      return node?.type || node?.data?.nodeType || 'unknown';
-    };
-
-    // Create adjacency lists
-    const outgoing = new Map(); // node -> [targets]
-    const incoming = new Map(); // node -> [sources]
-    
-    nodes.forEach(node => {
-      outgoing.set(node.id, []);
-      incoming.set(node.id, []);
-    });
-
-    edges.forEach(edge => {
-      outgoing.get(edge.source)?.push(edge.target);
-      incoming.get(edge.target)?.push(edge.source);
-    });
-
-    // Find different node categories
-    const inputNodes = nodes.filter(node => 
-      getNodeType(node.id).includes('Input') || 
-      getNodeType(node.id) === 'customInput' ||
-      incoming.get(node.id)?.length === 0
-    );
-    
-    const outputNodes = nodes.filter(node => 
-      getNodeType(node.id).includes('Output') || 
-      getNodeType(node.id) === 'customOutput' ||
-      outgoing.get(node.id)?.length === 0
-    );
-
-    // Topological sort with level assignment
-    const levels = new Map();
-    const queue = [...inputNodes];
-    let maxLevel = 0;
-
-    // Initialize input nodes at level 0
-    inputNodes.forEach(node => {
-      nodeMap.get(node.id).level = 0;
-      nodeMap.get(node.id).processed = true;
-      if (!levels.has(0)) levels.set(0, []);
-      levels.get(0).push(node);
-    });
-
-    // Process remaining nodes
-    while (queue.length > 0) {
-      const currentNode = queue.shift();
-      const currentLevel = nodeMap.get(currentNode.id).level;
-      
-      // Process all outgoing connections
-      outgoing.get(currentNode.id)?.forEach(targetId => {
-        const targetNodeData = nodeMap.get(targetId);
-        if (!targetNodeData.processed) {
-          const newLevel = currentLevel + 1;
-          targetNodeData.level = Math.max(targetNodeData.level, newLevel);
-          maxLevel = Math.max(maxLevel, newLevel);
-          
-          // Check if all incoming nodes are processed
-          const allIncomingProcessed = incoming.get(targetId)?.every(sourceId => 
-            nodeMap.get(sourceId).processed
-          );
-          
-          if (allIncomingProcessed) {
-            targetNodeData.processed = true;
-            const targetNode = nodes.find(n => n.id === targetId);
-            
-            if (!levels.has(newLevel)) levels.set(newLevel, []);
-            levels.get(newLevel).push(targetNode);
-            queue.push(targetNode);
-          }
-        }
-      });
-    }
-
-    // Handle unconnected nodes
-    nodes.forEach(node => {
-      const nodeData = nodeMap.get(node.id);
-      if (!nodeData.processed) {
-        const level = maxLevel + 1;
-        nodeData.level = level;
-        nodeData.processed = true;
-        if (!levels.has(level)) levels.set(level, []);
-        levels.get(level).push(node);
-        maxLevel = level;
-      }
-    });
-
-    // Smart positioning with flow optimization
-    const nodeWidth = 200;
-    const nodeHeight = 120;
-    const horizontalSpacing = 120; // Increased spacing
-    const verticalSpacing = 180;   // Increased vertical spacing
-    const baseX = 150;
-    const baseY = 100;
-
-    const updatedNodes = [];
-
-    // Position nodes level by level
-    for (let level = 0; level <= maxLevel; level++) {
-      const levelNodes = levels.get(level) || [];
-      if (levelNodes.length === 0) continue;
-
-      // Sort nodes within level for better flow
-      levelNodes.sort((a, b) => {
-        // Prioritize by node type
-        const typeOrder = {
-          'customInput': 0, 'input': 0,
-          'text': 1, 'calculator': 2, 'llm': 3, 'timer': 4,
-          'filter': 5, 'dataFormat': 6, 'notification': 7,
-          'customOutput': 8, 'output': 8
-        };
-        
-        const aType = getNodeType(a.id);
-        const bType = getNodeType(b.id);
-        const aOrder = typeOrder[aType] ?? 5;
-        const bOrder = typeOrder[bType] ?? 5;
-        
-        if (aOrder !== bOrder) return aOrder - bOrder;
-        
-        // Secondary sort by number of connections
-        const aConnections = (incoming.get(a.id)?.length || 0) + (outgoing.get(a.id)?.length || 0);
-        const bConnections = (incoming.get(b.id)?.length || 0) + (outgoing.get(b.id)?.length || 0);
-        return bConnections - aConnections;
-      });
-
-      // Calculate positions for this level
-      const levelWidth = levelNodes.length * nodeWidth + (levelNodes.length - 1) * horizontalSpacing;
-      let startX = baseX;
-
-      // Center the level if it has fewer nodes
-      if (levelNodes.length < 4) {
-        startX = baseX + (4 * (nodeWidth + horizontalSpacing) - levelWidth) / 2;
-      }
-
-      levelNodes.forEach((node, index) => {
-        const x = startX + index * (nodeWidth + horizontalSpacing);
-        const y = baseY + level * (nodeHeight + verticalSpacing);
-
-        updatedNodes.push({
-          id: node.id,
-          type: 'position',
-          position: { x, y }
-        });
-      });
-    }
-
-    // Apply the changes with animation
-    onNodesChange(updatedNodes);
-
-    // Fit view after alignment with delay for smooth transition
-    setTimeout(() => {
-      if (reactFlowInstance) {
-        reactFlowInstance.fitView({ 
-          padding: 0.3,
-          duration: 800,
-          includeHiddenNodes: false
-        });
-      }
-    }, 150);
-  };
-
   return (
     <div className="relative w-full h-full">
       <div 
@@ -368,7 +203,6 @@ export const PipelineUI = ({ darkMode = true }) => {
                   ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-600' 
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
               }`}
-              title="Zoom In"
             >
               <ZoomIn size={16} />
             </button>
@@ -379,21 +213,8 @@ export const PipelineUI = ({ darkMode = true }) => {
                   ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-600' 
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
               }`}
-              title="Zoom Out"
             >
               <ZoomOut size={16} />
-            </button>
-            <button
-              onClick={autoAlign}
-              className={`p-2 rounded-lg shadow-lg transition-all hover:scale-105 ${
-                darkMode 
-                  ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-600' 
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-              }`}
-              title="Auto Align Nodes"
-              disabled={nodes.length === 0}
-            >
-              <AlignJustify size={16} />
             </button>
             <button
               onClick={fitView}
@@ -402,7 +223,6 @@ export const PipelineUI = ({ darkMode = true }) => {
                   ? 'bg-gray-800 text-white hover:bg-gray-700 border border-gray-600' 
                   : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
               }`}
-              title="Fit View"
             >
               <Maximize size={16} />
             </button>

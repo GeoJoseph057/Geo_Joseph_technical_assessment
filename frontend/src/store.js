@@ -11,7 +11,6 @@ import {
 export const useStore = create((set, get) => ({
     nodes: [],
     edges: [],
-    nodeIDs: {}, // Add this missing property
     getNodeID: (type) => {
         const newIDs = {...get().nodeIDs};
         if (newIDs[type] === undefined) {
