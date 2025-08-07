@@ -31,12 +31,12 @@ export const OutputNode = ({ id, data, selected }) => {
         type="target"
         position={Position.Left}
         id={`${id}-value`}
-        style={{ 
-          background: '#10b981',
-          top: '30px',
-          width: '10px',
-          height: '10px',
-          border: `2px solid ${darkMode ? '#0f172a' : '#ffffff'}`
+        style={{
+          top: '50%',
+          width: '12px',
+          height: '12px',
+          background: '#3b82f6',
+          border: '2px solid #ffffff'
         }}
       />
       
