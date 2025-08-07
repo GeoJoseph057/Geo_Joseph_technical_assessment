@@ -1,8 +1,9 @@
 // textNode.js
 import React, { useState, useEffect, useRef } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Position } from 'reactflow';
 import { Type } from 'lucide-react';
 import { useStore } from '../store';
+import { BaseNode } from './BaseNode';
 
 export const TextNode = ({ id, data, selected }) => {
   const [focused, setFocused] = useState(false);
@@ -42,6 +43,20 @@ export const TextNode = ({ id, data, selected }) => {
     const newValue = e.target.value;
     // Update the node data in the store
     updateNodeField(id, 'text', newValue);
+    // Auto-resize textarea based on content
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  };
+
+  // Handle keyboard events to ensure all standard shortcuts work
+  const onKeyDown = (e) => {
+    // Allow all standard keyboard shortcuts to work
+    if (e.ctrlKey || e.metaKey) {
+      // Don't prevent default for Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X, etc.
+      return;
+    }
   };
 
   // Function to get variable colors
@@ -59,125 +74,63 @@ export const TextNode = ({ id, data, selected }) => {
     return colors[Math.abs(hash) % colors.length];
   }
 
+  const handles = [
+    {
+      type: 'source',
+      position: Position.Right,
+      id: `${id}-output`,
+    },
+    ...variables.map((variable, index) => ({
+      type: 'target',
+      position: Position.Left,
+      id: `${id}-var-${variable}`,
+      style: { top: `${60 + (index * 26)}px` },
+    })),
+  ];
+
   return (
-    <div className={`
-      w-72 rounded-lg shadow-lg border transition-all relative
-      ${selected ? 'ring-2 ring-green-500' : ''}
-      ${darkMode 
-        ? 'bg-gray-800 border-gray-700' 
-        : 'bg-white border-gray-200'
-      }
-    `}>
-      {/* Node Header */}
-      <div className="bg-green-500 text-white p-3 rounded-t-lg flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Type size={16} />
-          <span className="font-semibold text-sm">Text</span>
-        </div>
-        {variables.length > 0 && (
-          <span className="bg-green-600 px-2 py-1 rounded text-xs font-medium">
-            {variables.length}
-          </span>
-        )}
-      </div>
-      
-      <div className="p-4 space-y-3">
-        <div>
-          <textarea
-            ref={textareaRef}
-            value={data.text || ''}
-            onChange={onChange}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onInput={() => {
-              if (textareaRef.current) {
-                textareaRef.current.style.height = 'auto';
-                textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-              }
-            }}
-            placeholder="Enter text here..."
-            className={`w-full p-2 rounded-lg border text-sm resize-none overflow-hidden ${
-              darkMode 
-                ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:border-green-500' 
-                : 'bg-gray-100 border-gray-300 text-gray-800 placeholder-gray-500 focus:border-green-500'
-            } focus:outline-none focus:ring-2 focus:ring-green-500/20`}
-            style={{ minHeight: '60px' }}
-          />
-        </div>
-
-        {/* Variables Display */}
-        {variables.length > 0 && (
-          <div className="space-y-2">
-            <div className={`text-xs font-medium ${
-              darkMode ? 'text-gray-300' : 'text-gray-600'
-            }`}>
-              Variables
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {variables.map(variable => (
-                <div 
-                  key={variable}
-                  className={`px-2 py-1 rounded text-xs font-medium text-white ${getVariableColor(variable)}`}
-                >
-                  {variable}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Output Handle */}
-      <Handle
-        type="source"
-        position={Position.Right}
-        id={`${id}-output`}
-        style={{
-          width: '12px',
-          height: '12px',
-          background: '#10b981',
-          border: '2px solid #ffffff'
-        }}
+    <BaseNode
+      title="Text"
+      icon={<Type size={16} />}
+      handles={handles}
+      selected={selected}
+      darkMode={darkMode}
+    >
+      <textarea
+        ref={textareaRef}
+        value={data.text || ''}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        placeholder="Enter text here..."
+        className={`w-full p-2 rounded-lg border text-sm resize-none overflow-hidden ${
+          darkMode
+            ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:border-purple-500'
+            : 'bg-gray-100 border-gray-300 text-gray-800 placeholder-gray-500 focus:border-purple-500'
+        } focus:outline-none focus:ring-2 focus:ring-purple-500/20`}
+        style={{ minHeight: '60px' }}
       />
-
-      {/* Variable Handles */}
-      {variables.map((variable, index) => {
-        const colorMap = {
-          'bg-blue-500': '#3b82f6',
-          'bg-green-500': '#10b981',
-          'bg-yellow-500': '#eab308',
-          'bg-red-500': '#ef4444',
-          'bg-purple-500': '#8b5cf6',
-          'bg-pink-500': '#ec4899',
-          'bg-cyan-500': '#06b6d4',
-          'bg-orange-500': '#f97316'
-        };
-        
-        return (
-          <React.Fragment key={`handle-${variable}`}>
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={`${id}-var-${variable}`}
-              style={{
-                width: '12px',
-                height: '12px',
-                background: colorMap[getVariableColor(variable)] || '#3b82f6',
-                border: '2px solid #ffffff',
-                top: `${60 + (index * 26)}px`
-              }}
-            />
-            <div 
-              className={`absolute left-5 text-xs pointer-events-none ${
-                darkMode ? 'text-gray-300' : 'text-gray-600'
-              }`}
-              style={{ top: `${56 + (index * 26)}px` }}
-            >
-              {variable}
-            </div>
-          </React.Fragment>
-        );
-      })}
-    </div>
+      {/* Variables Display */}
+      {variables.length > 0 && (
+        <div className="space-y-2">
+          <div className={`text-xs font-medium ${
+            darkMode ? 'text-gray-300' : 'text-gray-600'
+          }`}>
+            Variables ({variables.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {variables.map(variable => (
+              <div
+                key={variable}
+                className={`px-2 py-1 rounded text-xs font-medium text-white ${getVariableColor(variable)}`}
+              >
+                {variable}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </BaseNode>
   );
 }
