@@ -20,6 +20,232 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+async def execute_filter_node(node: Dict[str, Any], input_data: Any) -> Any:
+    """Execute a Filter node - real data filtering"""
+    import pandas as pd
+    
+    node_data = node.get('data', {})
+    filter_type = node_data.get('filterType', 'contains')
+    filter_value = node_data.get('filterValue', '')
+    filter_field = node_data.get('filterField', 'text')
+    
+    await asyncio.sleep(0.1)
+    
+    try:
+        if isinstance(input_data, dict):
+            # Filter dictionary data
+            if filter_type == 'contains':
+                filtered_data = {k: v for k, v in input_data.items() 
+                               if filter_value.lower() in str(v).lower()}
+            elif filter_type == 'equals':
+                filtered_data = {k: v for k, v in input_data.items() 
+                               if str(v).lower() == filter_value.lower()}
+            elif filter_type == 'greater_than':
+                try:
+                    filter_num = float(filter_value)
+                    filtered_data = {k: v for k, v in input_data.items() 
+                                   if isinstance(v, (int, float)) and v > filter_num}
+                except ValueError:
+                    filtered_data = input_data
+            elif filter_type == 'less_than':
+                try:
+                    filter_num = float(filter_value)
+                    filtered_data = {k: v for k, v in input_data.items() 
+                                   if isinstance(v, (int, float)) and v < filter_num}
+                except ValueError:
+                    filtered_data = input_data
+            else:
+                filtered_data = input_data
+                
+        elif isinstance(input_data, list):
+            # Filter list data
+            if filter_type == 'contains':
+                filtered_data = [item for item in input_data 
+                               if filter_value.lower() in str(item).lower()]
+            elif filter_type == 'equals':
+                filtered_data = [item for item in input_data 
+                               if str(item).lower() == filter_value.lower()]
+            elif filter_type == 'greater_than':
+                try:
+                    filter_num = float(filter_value)
+                    filtered_data = [item for item in input_data 
+                                   if isinstance(item, (int, float)) and item > filter_num]
+                except ValueError:
+                    filtered_data = input_data
+            else:
+                filtered_data = input_data
+                
+        elif isinstance(input_data, str):
+            # Filter text data
+            if filter_type == 'contains':
+                filtered_data = input_data if filter_value.lower() in input_data.lower() else ""
+            elif filter_type == 'equals':
+                filtered_data = input_data if input_data.lower() == filter_value.lower() else ""
+            elif filter_type == 'remove_words':
+                words_to_remove = filter_value.split(',')
+                filtered_text = input_data
+                for word in words_to_remove:
+                    filtered_text = filtered_text.replace(word.strip(), '')
+                filtered_data = filtered_text.strip()
+            elif filter_type == 'extract_numbers':
+                import re
+                numbers = re.findall(r'-?\d+\.?\d*', input_data)
+                filtered_data = [float(n) for n in numbers if n]
+            else:
+                filtered_data = input_data
+        else:
+            filtered_data = input_data
+            
+        return {
+            'type': 'filter',
+            'filter_type': filter_type,
+            'filter_value': filter_value,
+            'original_data': input_data,
+            'filtered_data': filtered_data,
+            'items_before': len(input_data) if isinstance(input_data, (list, dict)) else 1,
+            'items_after': len(filtered_data) if isinstance(filtered_data, (list, dict)) else 1 if filtered_data else 0,
+            'filter_efficiency': f"{((len(filtered_data) if isinstance(filtered_data, (list, dict)) else 1 if filtered_data else 0) / (len(input_data) if isinstance(input_data, (list, dict)) else 1)) * 100:.1f}%" if input_data else "0%"
+        }
+        
+    except Exception as e:
+        return {
+            'type': 'filter',
+            'error': f'Filter error: {str(e)}',
+            'original_data': input_data,
+            'filtered_data': input_data
+        }
+
+async def execute_timer_node(node: Dict[str, Any], input_data: Any) -> Any:
+    """Execute a Timer node - add delays and timing"""
+    node_data = node.get('data', {})
+    delay_seconds = float(node_data.get('delay', 1.0))
+    
+    start_time = time.time()
+    await asyncio.sleep(delay_seconds)
+    end_time = time.time()
+    
+    return {
+        'type': 'timer',
+        'delay_requested': delay_seconds,
+        'actual_delay': round(end_time - start_time, 3),
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time)),
+        'input_data': input_data,
+        'message': f'Delayed execution by {delay_seconds} seconds'
+    }
+
+async def execute_calculator_node(node: Dict[str, Any], input_data: Any) -> Any:
+    """Execute a Calculator node - perform real mathematical operations"""
+    await asyncio.sleep(0.1)
+    
+    # Get calculation settings from node configuration
+    node_data = node.get('data', {})
+    operation = node_data.get('operation', 'sum')  # sum, average, multiply, etc.
+    
+    numbers = []
+    
+    # Extract numbers from various input formats
+    if isinstance(input_data, dict):
+        # Look for numeric values in dictionary
+        for value in input_data.values():
+            if isinstance(value, (int, float)):
+                numbers.append(value)
+            elif isinstance(value, str):
+                try:
+                    # Try to parse string as number
+                    num = float(value)
+                    numbers.append(num)
+                except ValueError:
+                    # Extract numbers from text using regex
+                    found_numbers = re.findall(r'-?\d+\.?\d*', value)
+                    numbers.extend([float(n) for n in found_numbers if n])
+    elif isinstance(input_data, (int, float)):
+        numbers.append(input_data)
+    elif isinstance(input_data, str):
+        # Extract all numbers from text
+        found_numbers = re.findall(r'-?\d+\.?\d*', input_data)
+        numbers = [float(n) for n in found_numbers if n]
+    elif isinstance(input_data, list):
+        # Handle list of numbers
+        for item in input_data:
+            if isinstance(item, (int, float)):
+                numbers.append(item)
+    
+    if not numbers:
+        return {
+            'error': 'No numeric values found in input',
+            'input_received': input_data,
+            'operation': operation
+        }
+    
+    # Perform the requested operation
+    try:
+        if operation == 'sum':
+            result_value = sum(numbers)
+        elif operation == 'add':  # Support both 'add' and 'sum'
+            result_value = sum(numbers)
+        elif operation == 'average' or operation == 'mean':
+            result_value = sum(numbers) / len(numbers)
+        elif operation == 'multiply' or operation == 'product':
+            result_value = 1
+            for num in numbers:
+                result_value *= num
+        elif operation == 'subtract':
+            # For subtract, take first number and subtract all others
+            result_value = numbers[0]
+            for num in numbers[1:]:
+                result_value -= num
+        elif operation == 'divide':
+            # For divide, take first number and divide by all others
+            result_value = numbers[0]
+            for num in numbers[1:]:
+                if num == 0:
+                    return {
+                        'error': 'Division by zero',
+                        'operation': operation,
+                        'input_numbers': numbers
+                    }
+                result_value /= num
+        elif operation == 'max':
+            result_value = max(numbers)
+        elif operation == 'min':
+            result_value = min(numbers)
+        elif operation == 'count':
+            result_value = len(numbers)
+        elif operation == 'median':
+            sorted_numbers = sorted(numbers)
+            n = len(sorted_numbers)
+            if n % 2 == 0:
+                result_value = (sorted_numbers[n//2 - 1] + sorted_numbers[n//2]) / 2
+            else:
+                result_value = sorted_numbers[n//2]
+        elif operation == 'range':
+            result_value = max(numbers) - min(numbers)
+        else:
+            # Default to sum if operation not recognized
+            result_value = sum(numbers)
+            operation = 'sum (default)'
+        
+        return {
+            'operation': operation,
+            'result': result_value,
+            'input_numbers': numbers,
+            'count': len(numbers),
+            'statistics': {
+                'sum': sum(numbers),
+                'average': sum(numbers) / len(numbers),
+                'max': max(numbers),
+                'min': min(numbers),
+                'count': len(numbers)
+            }
+        }
+        
+    except Exception as e:
+        return {
+            'error': f'Calculation error: {str(e)}',
+            'operation': operation,
+            'input_numbers': numbers
+        }
+
 class PipelineData(BaseModel):
     nodes: List[Dict[str, Any]]
     edges: List[Dict[str, Any]]
@@ -56,7 +282,7 @@ def get_setup_info():
         import requests
         response = requests.get('http://localhost:11434/api/tags', timeout=2)
         ollama_available = response.status_code == 200
-    except Exception:
+    except:
         pass
     
     return {
@@ -216,6 +442,8 @@ async def execute_input_node(node: Dict[str, Any]) -> Any:
 
 async def execute_text_node(node: Dict[str, Any], input_data: Any) -> Any:
     """Execute a Text node - perform real advanced text processing"""
+    import re
+    
     node_data = node.get('data', {})
     text_content = node_data.get('text', 'Processing: {{input}}')
 
@@ -337,106 +565,6 @@ async def execute_text_node(node: Dict[str, Any], input_data: Any) -> Any:
         'variables_found': re.findall(r'\{\{(\w+)\}\}', text_content)
     }
 
-def generate_intelligent_response(prompt: str) -> str:
-    """Generate intelligent mock responses based on the input prompt"""
-    prompt_lower = prompt.lower()
-    
-    # Sun-related queries
-    if any(word in prompt_lower for word in ['sun', 'solar', 'star']):
-        return """The Sun is a massive, luminous sphere of hot gas and plasma held together by its own gravity. Here are some key facts:
-
-🌟 **Physical Properties:**
-- Diameter: ~1.39 million kilometers (109 times Earth's diameter)
-- Mass: ~1.989 × 10³⁰ kg (99.86% of our solar system's total mass)
-- Surface temperature: ~5,778 K (5,505°C or 9,941°F)
-- Core temperature: ~15 million°C
-
-☢️ **Energy Production:**
-- Powers itself through nuclear fusion in its core
-- Converts ~4 million tons of matter into energy every second
-- Produces energy equivalent to 3.8 × 10²⁶ watts
-
-🌍 **Importance to Earth:**
-- Primary energy source for most life on Earth
-- Drives weather patterns and ocean currents
-- Enables photosynthesis in plants
-- Creates the seasons through Earth's orbital relationship
-
-The Sun is classified as a G-type main-sequence star and is approximately 4.6 billion years old. It's expected to continue burning for another 5 billion years."""
-    
-    # Earth-related queries
-    elif any(word in prompt_lower for word in ['earth', 'planet', 'world']):
-        return """Earth is the third planet from the Sun and the only known planet to harbor life. Key characteristics:
-
-🌍 **Basic Facts:**
-- Age: ~4.54 billion years
-- Diameter: 12,756 km
-- Distance from Sun: ~149.6 million km (1 AU)
-- One natural satellite: the Moon
-
-🌊 **Composition:**
-- Surface: 71% water, 29% land
-- Atmosphere: 78% nitrogen, 21% oxygen, 1% other gases
-- Core: Iron and nickel, creating a magnetic field
-
-🌱 **Life & Biodiversity:**
-- Only known planet with life
-- Estimated 8.7 million species
-- Complex ecosystems and food webs
-- Supports human civilization"""
-    
-    # Technology queries
-    elif any(word in prompt_lower for word in ['ai', 'artificial intelligence', 'machine learning', 'technology']):
-        return """Artificial Intelligence represents one of the most transformative technologies of our time:
-
-🤖 **What is AI:**
-- Computer systems that can perform tasks typically requiring human intelligence
-- Includes machine learning, natural language processing, computer vision
-- Ranges from narrow AI (specific tasks) to general AI (human-level reasoning)
-
-📊 **Current Applications:**
-- Healthcare: Medical diagnosis, drug discovery
-- Transportation: Autonomous vehicles, traffic optimization
-- Communication: Language translation, chatbots
-- Finance: Fraud detection, algorithmic trading
-
-🔮 **Future Potential:**
-- Enhanced scientific research and discovery
-- Improved healthcare and personalized medicine
-- More efficient energy systems and climate solutions
-- Advanced automation across industries
-
-⚠️ **Considerations:**
-- Ethical implications and bias in AI systems
-- Impact on employment and society
-- Need for responsible development and regulation"""
-    
-    # Default intelligent response
-    else:
-        return f"""Thank you for your query about: "{prompt}"
-
-I'm an AI assistant designed to provide helpful, accurate, and comprehensive responses. While I don't have access to real-time information, I can help with:
-
-📚 **Knowledge & Information:**
-- General facts and explanations
-- Educational content
-- Historical information
-- Scientific concepts
-
-💡 **Problem Solving:**
-- Analysis and reasoning
-- Step-by-step guidance
-- Creative solutions
-- Research assistance
-
-🛠️ **Practical Help:**
-- Writing and communication
-- Planning and organization
-- Technical explanations
-- Learning support
-
-If you have a specific question or need help with a particular topic, feel free to ask! I'm here to provide detailed, thoughtful responses tailored to your needs."""
-
 async def execute_llm_node(node: Dict[str, Any], input_data: Any) -> Any:
     """Execute an LLM node - real AI processing using OpenAI or Ollama"""
     import os
@@ -482,21 +610,7 @@ async def execute_llm_node(node: Dict[str, Any], input_data: Any) -> Any:
                     'provider': 'openai'
                 }
             except Exception as e:
-                error_msg = str(e)
-                print(f"OpenAI API error: {error_msg}")
-                
-                # Check for quota exceeded error
-                if "insufficient_quota" in error_msg or "exceeded your current quota" in error_msg:
-                    # Generate a smart mock response about the quota issue
-                    smart_response = generate_intelligent_response(content)
-                    return {
-                        'type': 'llm_response',
-                        'model': model,
-                        'response': f"⚠️ **OpenAI API Quota Exceeded** ⚠️\n\nThe provided OpenAI API key has exceeded its usage quota. Please check your OpenAI billing dashboard to add credits.\n\n**Enhanced Mock AI Response for your query:**\n\n{smart_response}\n\n💡 *This is a high-quality mock response generated while the OpenAI API is unavailable due to quota limits.*",
-                        'provider': 'mock_ai_quota_exceeded',
-                        'quota_exceeded': True,
-                        'error': 'OpenAI quota exceeded'
-                    }
+                print(f"OpenAI API error: {e}")
         
         # Fallback to Ollama (local)
         try:
@@ -560,82 +674,42 @@ async def execute_output_node(node: Dict[str, Any], input_data: Any) -> Any:
     """Execute an Output node - format and prepare final output"""
     node_data = node.get('data', {})
     output_name = node_data.get('outputName', 'output')
-    output_format = node_data.get('outputFormat', 'text').lower()
+    output_format = node_data.get('outputFormat', 'json')
 
     await asyncio.sleep(0.2)
 
     if not input_data:
         return {'error': 'No input data to output'}
 
-    # Extract the actual value from input data
-    if isinstance(input_data, dict):
-        if 'result' in input_data:
-            actual_value = input_data['result']
-        elif 'response' in input_data:
-            actual_value = input_data['response']
-        elif 'value' in input_data:
-            actual_value = input_data['value']
-        elif 'data' in input_data:
-            actual_value = input_data['data']
-        else:
-            actual_value = input_data
-    else:
-        actual_value = input_data
-
     # Format output based on selected format
-    if output_format == 'text':
-        # For text format, return just the plain value as string
-        if isinstance(actual_value, (dict, list)):
-            # If it's complex data, extract the main content
-            if isinstance(actual_value, dict) and 'response' in actual_value:
-                formatted_output = str(actual_value['response'])
-            elif isinstance(actual_value, dict) and 'result' in actual_value:
-                formatted_output = str(actual_value['result'])
-            else:
-                formatted_output = str(actual_value)
-        else:
-            formatted_output = str(actual_value)
-    elif output_format == 'json':
-        formatted_output = json.dumps(actual_value, indent=2)
+    if output_format == 'json':
+        formatted_output = json.dumps(input_data, indent=2)
     elif output_format == 'csv':
-        if isinstance(actual_value, dict):
-            headers = list(actual_value.keys())
-            values = list(actual_value.values())
+        if isinstance(input_data, dict):
+            headers = list(input_data.keys())
+            values = list(input_data.values())
             formatted_output = ','.join(headers) + '\n' + ','.join(str(v) for v in values)
         else:
-            formatted_output = f'value\n{actual_value}'
+            formatted_output = f'value\n{input_data}'
     elif output_format == 'xml':
-        if isinstance(actual_value, dict):
+        if isinstance(input_data, dict):
             xml_parts = ['<output>']
-            for k, v in actual_value.items():
+            for k, v in input_data.items():
                 xml_parts.append(f'  <{k}>{v}</{k}>')
             xml_parts.append('</output>')
             formatted_output = '\n'.join(xml_parts)
         else:
-            formatted_output = f'<output><value>{actual_value}</value></output>'
+            formatted_output = f'<output><value>{input_data}</value></output>'
     else:
-        # Default to text format
-        formatted_output = str(actual_value)
+        formatted_output = str(input_data)
 
-    # For text format, return just the string value for simple display
-    if output_format == 'text':
-        return {
-            'type': 'output',
-            'name': output_name,
-            'format': output_format,
-            'data': formatted_output,
-            'size': len(formatted_output),
-            'text_display': formatted_output  # Add this for easy frontend access
-        }
-    else:
-        # For other formats, return structured data
-        return {
-            'type': 'output',
-            'name': output_name,
-            'format': output_format,
-            'data': formatted_output,
-            'size': len(formatted_output)
-        }
+    return {
+        'type': 'output',
+        'name': output_name,
+        'format': output_format,
+        'data': formatted_output,
+        'size': len(formatted_output)
+    }
 
 async def execute_calculator_node(node: Dict[str, Any], input_data: Any) -> Any:
     """Execute a Calculator node - perform real mathematical operations"""
@@ -648,41 +722,31 @@ async def execute_calculator_node(node: Dict[str, Any], input_data: Any) -> Any:
     numbers = []
     
     # Extract numbers from various input formats
-    def extract_numbers_recursive(data):
-        """Recursively extract numbers from nested data structures"""
-        numbers = []
-        
-        if isinstance(data, (int, float)):
-            numbers.append(data)
-        elif isinstance(data, str):
-            try:
-                # Try to parse string as number
-                num = float(data)
-                numbers.append(num)
-            except ValueError:
-                # Extract numbers from text using regex
-                found_numbers = re.findall(r'-?\d+\.?\d*', data)
-                numbers.extend([float(n) for n in found_numbers if n])
-        elif isinstance(data, dict):
-            # For structured data, prioritize certain keys
-            if 'result' in data:
-                numbers.extend(extract_numbers_recursive(data['result']))
-            elif 'value' in data:
-                numbers.extend(extract_numbers_recursive(data['value']))
-            else:
-                # For other keys, skip metadata like 'length', 'size', 'type' etc.
-                skip_keys = {'type', 'length', 'size', 'count', 'format', 'name', 'status', 'error', 'original_input'}
-                for key, value in data.items():
-                    if key not in skip_keys:
-                        numbers.extend(extract_numbers_recursive(value))
-        elif isinstance(data, list):
-            # Recursively search through list items
-            for item in data:
-                numbers.extend(extract_numbers_recursive(item))
-        
-        return numbers
-
-    numbers = extract_numbers_recursive(input_data)
+    if isinstance(input_data, dict):
+        # Look for numeric values in dictionary
+        for value in input_data.values():
+            if isinstance(value, (int, float)):
+                numbers.append(value)
+            elif isinstance(value, str):
+                try:
+                    # Try to parse string as number
+                    num = float(value)
+                    numbers.append(num)
+                except ValueError:
+                    # Extract numbers from text using regex
+                    found_numbers = re.findall(r'-?\d+\.?\d*', value)
+                    numbers.extend([float(n) for n in found_numbers if n])
+    elif isinstance(input_data, (int, float)):
+        numbers.append(input_data)
+    elif isinstance(input_data, str):
+        # Extract all numbers from text
+        found_numbers = re.findall(r'-?\d+\.?\d*', input_data)
+        numbers = [float(n) for n in found_numbers if n]
+    elif isinstance(input_data, list):
+        # Handle list of numbers
+        for item in input_data:
+            if isinstance(item, (int, float)):
+                numbers.append(item)
     
     if not numbers:
         return {
@@ -760,349 +824,117 @@ async def execute_calculator_node(node: Dict[str, Any], input_data: Any) -> Any:
             'input_numbers': numbers
         }
 
-async def execute_timer_node(node: Dict[str, Any], input_data: Any) -> Any:
-    """Execute a Timer node - real timing and delay functionality"""
-    import time
-    
-    node_data = node.get('data', {})
-    duration = node_data.get('duration', 1000)  # milliseconds
-    mode = node_data.get('mode', 'delay')  # delay, interval, or timeout
-    
-    start_time = time.time()
-    
-    if mode == 'delay':
-        # Simple delay - wait for specified duration
-        await asyncio.sleep(duration / 1000.0)  # Convert ms to seconds
-        actual_duration = (time.time() - start_time) * 1000
-        
-        return {
-            'type': 'timer_result',
-            'mode': 'delay',
-            'requested_duration': duration,
-            'actual_duration': round(actual_duration, 2),
-            'input_data': input_data,
-            'timestamp': int(time.time() * 1000)
-        }
-    
-    elif mode == 'timeout':
-        # Timeout - pass through data immediately but track timing
-        actual_duration = (time.time() - start_time) * 1000
-        
-        return {
-            'type': 'timer_result',
-            'mode': 'timeout',
-            'duration': duration,
-            'elapsed': round(actual_duration, 2),
-            'data': input_data,
-            'timestamp': int(time.time() * 1000)
-        }
-    
-    else:  # interval mode
-        # For interval, we'll simulate by adding timing metadata
-        actual_duration = (time.time() - start_time) * 1000
-        
-        return {
-            'type': 'timer_result',
-            'mode': 'interval',
-            'interval': duration,
-            'elapsed': round(actual_duration, 2),
-            'data': input_data,
-            'timestamp': int(time.time() * 1000)
-        }
-
 async def execute_filter_node(node: Dict[str, Any], input_data: Any) -> Any:
-    """Execute a Filter node - real data filtering functionality"""
+    """Execute a Filter node - real data filtering"""
+    import pandas as pd
+    
     node_data = node.get('data', {})
     filter_type = node_data.get('filterType', 'contains')
     filter_value = node_data.get('filterValue', '')
+    filter_field = node_data.get('filterField', 'text')
     
     await asyncio.sleep(0.1)
-    
-    if not input_data:
-        return {
-            'type': 'filter_result',
-            'filter_type': filter_type,
-            'filter_value': filter_value,
-            'passed': False,
-            'reason': 'No input data provided'
-        }
-    
-    # Extract text from input data for filtering
-    text_to_filter = ""
-    if isinstance(input_data, dict):
-        if 'response' in input_data:
-            text_to_filter = str(input_data['response'])
-        elif 'value' in input_data:
-            text_to_filter = str(input_data['value'])
-        elif 'processed' in input_data:
-            text_to_filter = str(input_data['processed'])
-        else:
-            text_to_filter = str(input_data)
-    else:
-        text_to_filter = str(input_data)
-    
-    # Apply filter logic
-    passed = False
-    reason = ""
-    
-    if filter_type == 'contains':
-        passed = filter_value.lower() in text_to_filter.lower()
-        reason = f"Text {'contains' if passed else 'does not contain'} '{filter_value}'"
-    
-    elif filter_type == 'starts_with':
-        passed = text_to_filter.lower().startswith(filter_value.lower())
-        reason = f"Text {'starts with' if passed else 'does not start with'} '{filter_value}'"
-    
-    elif filter_type == 'ends_with':
-        passed = text_to_filter.lower().endswith(filter_value.lower())
-        reason = f"Text {'ends with' if passed else 'does not end with'} '{filter_value}'"
-    
-    elif filter_type == 'regex':
-        try:
-            import re
-            pattern = re.compile(filter_value, re.IGNORECASE)
-            passed = bool(pattern.search(text_to_filter))
-            reason = f"Text {'matches' if passed else 'does not match'} regex pattern '{filter_value}'"
-        except re.error as e:
-            passed = False
-            reason = f"Invalid regex pattern: {str(e)}"
-    
-    elif filter_type == 'length':
-        try:
-            target_length = int(filter_value)
-            passed = len(text_to_filter) >= target_length
-            reason = f"Text length ({len(text_to_filter)}) is {'≥' if passed else '<'} {target_length}"
-        except ValueError:
-            passed = False
-            reason = f"Invalid length value: {filter_value}"
-    
-    else:
-        passed = True
-        reason = f"Unknown filter type: {filter_type}"
-    
-    return {
-        'type': 'filter_result',
-        'filter_type': filter_type,
-        'filter_value': filter_value,
-        'input_text': text_to_filter[:100] + "..." if len(text_to_filter) > 100 else text_to_filter,
-        'passed': passed,
-        'reason': reason,
-        'original_data': input_data if passed else None,
-        'filtered_count': 1 if passed else 0
-    }
-
-async def execute_notification_node(node: Dict[str, Any], input_data: Any) -> Any:
-    """Execute a Notification node - real notification functionality (simulated)"""
-    import json
-    import time
-    
-    node_data = node.get('data', {})
-    notification_type = node_data.get('notificationType', 'email')
-    recipient = node_data.get('recipient', 'user@example.com')
-    message = node_data.get('message', 'Pipeline notification')
-    
-    await asyncio.sleep(0.2)  # Simulate network delay
-    
-    # Extract content from input data for notification
-    content = ""
-    if isinstance(input_data, dict):
-        if 'result' in input_data:
-            content = str(input_data['result'])
-        elif 'response' in input_data:
-            content = str(input_data['response'])
-        elif 'value' in input_data:
-            content = str(input_data['value'])
-        else:
-            content = json.dumps(input_data, indent=2)
-    else:
-        content = str(input_data)
-    
-    # Format notification message
-    full_message = f"{message}\n\nPipeline Result:\n{content}"
-    
-    # Simulate different notification types
-    notification_result = {
-        'type': 'notification_sent',
-        'notification_type': notification_type,
-        'recipient': recipient,
-        'message': full_message,
-        'timestamp': int(time.time() * 1000),
-        'status': 'sent',
-        'input_data': input_data
-    }
-    
-    if notification_type == 'email':
-        notification_result.update({
-            'subject': f"Pipeline Notification - {time.strftime('%Y-%m-%d %H:%M:%S')}",
-            'delivery_method': 'SMTP simulation',
-            'email_size': len(full_message)
-        })
-    
-    elif notification_type == 'sms':
-        # SMS has character limits
-        sms_message = full_message[:160] + "..." if len(full_message) > 160 else full_message
-        notification_result.update({
-            'sms_message': sms_message,
-            'character_count': len(sms_message),
-            'delivery_method': 'SMS gateway simulation'
-        })
-    
-    elif notification_type == 'slack':
-        notification_result.update({
-            'channel': '#pipeline-notifications',
-            'webhook_url': 'https://hooks.slack.com/services/...',
-            'delivery_method': 'Slack webhook simulation',
-            'formatted_message': f"```\n{full_message}\n```"
-        })
-    
-    return notification_result
-
-async def execute_data_format_node(node: Dict[str, Any], input_data: Any) -> Any:
-    """Execute a Data Format node - real data transformation functionality"""
-    import json
-    import csv
-    import io
-    
-    node_data = node.get('data', {})
-    input_format = node_data.get('inputFormat', 'auto')
-    output_format = node_data.get('outputFormat', 'json')
-    
-    await asyncio.sleep(0.1)
-    
-    if not input_data:
-        return {
-            'error': 'No input data to format',
-            'input_format': input_format,
-            'output_format': output_format
-        }
-    
-    # Auto-detect input format if needed
-    detected_format = 'unknown'
-    raw_data = input_data
-    
-    if isinstance(input_data, dict):
-        detected_format = 'dict'
-        raw_data = input_data
-    elif isinstance(input_data, list):
-        detected_format = 'list'
-        raw_data = input_data
-    elif isinstance(input_data, str):
-        # Try to detect string format
-        input_data_stripped = input_data.strip()
-        if input_data_stripped.startswith('{') and input_data_stripped.endswith('}'):
-            try:
-                raw_data = json.loads(input_data_stripped)
-                detected_format = 'json'
-            except:
-                detected_format = 'text'
-                raw_data = input_data
-        elif input_data_stripped.startswith('[') and input_data_stripped.endswith(']'):
-            try:
-                raw_data = json.loads(input_data_stripped)
-                detected_format = 'json_array'
-            except (json.JSONDecodeError, ValueError):
-                detected_format = 'text'
-                raw_data = input_data
-        elif ',' in input_data and '\n' in input_data:
-            detected_format = 'csv'
-            raw_data = input_data
-        else:
-            detected_format = 'text'
-            raw_data = input_data
-    else:
-        detected_format = 'primitive'
-        raw_data = input_data
-    
-    # Convert to output format
-    formatted_output = ""
-    conversion_info = {
-        'input_format': detected_format,
-        'output_format': output_format,
-        'conversion_successful': True,
-        'conversion_notes': []
-    }
     
     try:
-        if output_format == 'json':
-            formatted_output = json.dumps(raw_data, indent=2, ensure_ascii=False)
-            conversion_info['conversion_notes'].append(f"Converted {detected_format} to JSON with 2-space indentation")
-        
-        elif output_format == 'csv':
-            output = io.StringIO()
-            if isinstance(raw_data, list) and len(raw_data) > 0:
-                if isinstance(raw_data[0], dict):
-                    # List of dictionaries -> CSV
-                    writer = csv.DictWriter(output, fieldnames=raw_data[0].keys())
-                    writer.writeheader()
-                    writer.writerows(raw_data)
-                    conversion_info['conversion_notes'].append(f"Converted list of {len(raw_data)} dictionaries to CSV")
-                else:
-                    # List of values -> single column CSV
-                    writer = csv.writer(output)
-                    writer.writerow(['value'])
-                    for item in raw_data:
-                        writer.writerow([item])
-                    conversion_info['conversion_notes'].append(f"Converted list of {len(raw_data)} values to single-column CSV")
-            elif isinstance(raw_data, dict):
-                # Dictionary -> CSV
-                writer = csv.writer(output)
-                writer.writerow(['key', 'value'])
-                for key, value in raw_data.items():
-                    writer.writerow([key, value])
-                conversion_info['conversion_notes'].append(f"Converted dictionary with {len(raw_data)} keys to key-value CSV")
+        if isinstance(input_data, dict):
+            # Filter dictionary data
+            if filter_type == 'contains':
+                filtered_data = {k: v for k, v in input_data.items() 
+                               if filter_value.lower() in str(v).lower()}
+            elif filter_type == 'equals':
+                filtered_data = {k: v for k, v in input_data.items() 
+                               if str(v).lower() == filter_value.lower()}
+            elif filter_type == 'greater_than':
+                try:
+                    filter_num = float(filter_value)
+                    filtered_data = {k: v for k, v in input_data.items() 
+                                   if isinstance(v, (int, float)) and v > filter_num}
+                except ValueError:
+                    filtered_data = input_data
+            elif filter_type == 'less_than':
+                try:
+                    filter_num = float(filter_value)
+                    filtered_data = {k: v for k, v in input_data.items() 
+                                   if isinstance(v, (int, float)) and v < filter_num}
+                except ValueError:
+                    filtered_data = input_data
             else:
-                # Single value -> CSV
-                writer = csv.writer(output)
-                writer.writerow(['value'])
-                writer.writerow([raw_data])
-                conversion_info['conversion_notes'].append("Converted single value to CSV")
+                filtered_data = input_data
+                
+        elif isinstance(input_data, list):
+            # Filter list data
+            if filter_type == 'contains':
+                filtered_data = [item for item in input_data 
+                               if filter_value.lower() in str(item).lower()]
+            elif filter_type == 'equals':
+                filtered_data = [item for item in input_data 
+                               if str(item).lower() == filter_value.lower()]
+            elif filter_type == 'greater_than':
+                try:
+                    filter_num = float(filter_value)
+                    filtered_data = [item for item in input_data 
+                                   if isinstance(item, (int, float)) and item > filter_num]
+                except ValueError:
+                    filtered_data = input_data
+            else:
+                filtered_data = input_data
+                
+        elif isinstance(input_data, str):
+            # Filter text data
+            if filter_type == 'contains':
+                filtered_data = input_data if filter_value.lower() in input_data.lower() else ""
+            elif filter_type == 'equals':
+                filtered_data = input_data if input_data.lower() == filter_value.lower() else ""
+            elif filter_type == 'remove_words':
+                words_to_remove = filter_value.split(',')
+                filtered_text = input_data
+                for word in words_to_remove:
+                    filtered_text = filtered_text.replace(word.strip(), '')
+                filtered_data = filtered_text.strip()
+            elif filter_type == 'extract_numbers':
+                import re
+                numbers = re.findall(r'-?\d+\.?\d*', input_data)
+                filtered_data = [float(n) for n in numbers if n]
+            else:
+                filtered_data = input_data
+        else:
+            filtered_data = input_data
             
-            formatted_output = output.getvalue()
+        return {
+            'type': 'filter',
+            'filter_type': filter_type,
+            'filter_value': filter_value,
+            'original_data': input_data,
+            'filtered_data': filtered_data,
+            'items_before': len(input_data) if isinstance(input_data, (list, dict)) else 1,
+            'items_after': len(filtered_data) if isinstance(filtered_data, (list, dict)) else 1 if filtered_data else 0,
+            'filter_efficiency': f"{((len(filtered_data) if isinstance(filtered_data, (list, dict)) else 1 if filtered_data else 0) / (len(input_data) if isinstance(input_data, (list, dict)) else 1)) * 100:.1f}%" if input_data else "0%"
+        }
         
-        elif output_format == 'xml':
-            if isinstance(raw_data, dict):
-                xml_parts = ['<data>']
-                for key, value in raw_data.items():
-                    # Sanitize key for XML
-                    clean_key = ''.join(c if c.isalnum() or c in '_-' else '_' for c in str(key))
-                    xml_parts.append(f'  <{clean_key}>{value}</{clean_key}>')
-                xml_parts.append('</data>')
-                formatted_output = '\n'.join(xml_parts)
-                conversion_info['conversion_notes'].append(f"Converted dictionary to XML with {len(raw_data)} elements")
-            else:
-                formatted_output = f'<data><value>{raw_data}</value></data>'
-                conversion_info['conversion_notes'].append("Converted single value to XML")
-        
-        elif output_format == 'yaml':
-            # Simple YAML-like output
-            if isinstance(raw_data, dict):
-                yaml_lines = []
-                for key, value in raw_data.items():
-                    if isinstance(value, str):
-                        yaml_lines.append(f"{key}: '{value}'")
-                    else:
-                        yaml_lines.append(f"{key}: {value}")
-                formatted_output = '\n'.join(yaml_lines)
-                conversion_info['conversion_notes'].append(f"Converted dictionary to YAML with {len(raw_data)} keys")
-            else:
-                formatted_output = f"value: {raw_data}"
-                conversion_info['conversion_notes'].append("Converted single value to YAML")
-        
-        else:  # text or unknown format
-            formatted_output = str(raw_data)
-            conversion_info['conversion_notes'].append(f"Converted {detected_format} to text string")
-    
     except Exception as e:
-        conversion_info['conversion_successful'] = False
-        conversion_info['error'] = str(e)
-        formatted_output = str(raw_data)  # Fallback to string representation
+        return {
+            'type': 'filter',
+            'error': f'Filter error: {str(e)}',
+            'original_data': input_data,
+            'filtered_data': input_data
+        }
+
+async def execute_timer_node(node: Dict[str, Any], input_data: Any) -> Any:
+    """Execute a Timer node - add delays and timing"""
+    node_data = node.get('data', {})
+    delay_seconds = float(node_data.get('delay', 1.0))
+    
+    start_time = time.time()
+    await asyncio.sleep(delay_seconds)
+    end_time = time.time()
     
     return {
-        'type': 'data_format_result',
-        'original_data': raw_data,
-        'formatted_output': formatted_output,
-        'output_size': len(formatted_output),
-        'conversion_info': conversion_info
+        'type': 'timer',
+        'delay_requested': delay_seconds,
+        'actual_delay': round(end_time - start_time, 3),
+        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(end_time)),
+        'input_data': input_data,
+        'message': f'Delayed execution by {delay_seconds} seconds'
     }
 
 async def execute_node(node: Dict[str, Any], input_data: Any = None) -> NodeResult:
@@ -1122,14 +954,10 @@ async def execute_node(node: Dict[str, Any], input_data: Any = None) -> NodeResu
             result = await execute_output_node(node, input_data)
         elif 'calculator' in node_type.lower() or 'calculator' in node_id.lower():
             result = await execute_calculator_node(node, input_data)
-        elif 'timer' in node_type.lower() or 'timer' in node_id.lower():
-            result = await execute_timer_node(node, input_data)
         elif 'filter' in node_type.lower() or 'filter' in node_id.lower():
             result = await execute_filter_node(node, input_data)
-        elif 'notification' in node_type.lower() or 'notification' in node_id.lower():
-            result = await execute_notification_node(node, input_data)
-        elif 'dataformat' in node_type.lower() or 'data' in node_id.lower():
-            result = await execute_data_format_node(node, input_data)
+        elif 'timer' in node_type.lower() or 'timer' in node_id.lower():
+            result = await execute_timer_node(node, input_data)
         else:
             # Generic node processing
             await asyncio.sleep(0.2)
@@ -1253,7 +1081,3 @@ async def parse_pipeline(pipeline_data: PipelineData):
     except Exception as e:
         total_time = time.time() - start_time
         raise HTTPException(status_code=400, detail=f"Error processing pipeline: {str(e)}") from e
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)

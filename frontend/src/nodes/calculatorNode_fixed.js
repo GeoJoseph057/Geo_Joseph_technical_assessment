@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
 import { Position } from 'reactflow';
 import { BaseNode } from './BaseNode';
-import { Calculator, Plus, Minus, X, Divide } from 'lucide-react';
+import { Calculator, Plus, Minus, X, Divide, TrendingUp, BarChart3 } from 'lucide-react';
+import { useStore } from '../store';
 
 const CalculatorNode = ({ id, data, selected }) => {
   const [operation, setOperation] = useState(data?.operation || 'add');
   const darkMode = data?.darkMode ?? true;
+
+  const handleOperationChange = (newOp) => {
+    setOperation(newOp);
+  };
 
   const handles = [
     {
@@ -26,6 +31,36 @@ const CalculatorNode = ({ id, data, selected }) => {
       id: `${id}-result`,
     },
   ];
+
+  const getOperationIcon = (op) => {
+    switch (op) {
+      case 'add':
+        return <Plus size={14} />;
+      case 'subtract':
+        return <Minus size={14} />;
+      case 'multiply':
+        return <X size={14} />;
+      case 'divide':
+        return <Divide size={14} />;
+      default:
+        return <Plus size={14} />;
+    }
+  };
+
+  const getOperationSymbol = (op) => {
+    switch (op) {
+      case 'add':
+        return '+';
+      case 'subtract':
+        return '−';
+      case 'multiply':
+        return '×';
+      case 'divide':
+        return '÷';
+      default:
+        return '+';
+    }
+  };
 
   const operations = [
     { value: 'add', label: 'Add', symbol: '+', color: 'text-green-500' },

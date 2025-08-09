@@ -1,165 +1,117 @@
 // outputNode.js
 
 import { useState } from 'react';
-import { Handle, Position } from 'reactflow';
+import { Position } from 'reactflow';
+import { LogOut, Download } from 'lucide-react';
+import { BaseNode } from './BaseNode';
 
 export const OutputNode = ({ id, data, selected }) => {
   const [currName, setCurrName] = useState(data?.outputName || id.replace('customOutput-', 'output_'));
-  const [outputType, setOutputType] = useState(data.outputType || 'Text');
+  const [outputFormat, setOutputFormat] = useState(data?.outputFormat || 'json');
   const darkMode = data?.darkMode ?? true;
 
   const handleNameChange = (e) => {
     setCurrName(e.target.value);
   };
 
-  const handleTypeChange = (e) => {
-    setOutputType(e.target.value);
+  const handleFormatChange = (e) => {
+    setOutputFormat(e.target.value);
   };
 
+  const handles = [
+    {
+      type: 'target',
+      position: Position.Left,
+      id: `${id}-value`,
+    },
+  ];
+
+  const formatOptions = [
+    { value: 'json', label: 'JSON', extension: '.json', color: 'text-blue-500' },
+    { value: 'csv', label: 'CSV', extension: '.csv', color: 'text-green-500' },
+    { value: 'xml', label: 'XML', extension: '.xml', color: 'text-orange-500' },
+    { value: 'yaml', label: 'YAML', extension: '.yaml', color: 'text-purple-500' },
+    { value: 'txt', label: 'Text', extension: '.txt', color: 'text-gray-500' },
+  ];
+
+  const currentFormat = formatOptions.find(f => f.value === outputFormat) || formatOptions[0];
+
   return (
-    <div style={{
-      width: 300,
-      position: 'relative',
-      backgroundColor: darkMode ? '#0f172a' : '#ffffff',
-      border: `1px solid ${darkMode ? '#1e293b' : '#e2e8f0'}`,
-      borderRadius: '8px',
-      overflow: 'hidden',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12)',
-      borderColor: selected ? '#3b82f6' : undefined
-    }}>
-      <Handle
-        type="target"
-        position={Position.Left}
-        id={`${id}-value`}
-        style={{
-          top: '50%',
-          width: '12px',
-          height: '12px',
-          background: '#3b82f6',
-          border: '2px solid #ffffff'
-        }}
-      />
-      
-      {/* Node Header */}
-      <div style={{
-        padding: '12px 16px',
-        backgroundColor: '#10b981', // Green header
-        color: '#ffffff',
-        display: 'flex',
-        alignItems: 'center',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span style={{ 
-            fontWeight: 600,
-            fontSize: '14px',
-            color: '#ffffff'
-          }}>Output</span>
-        </div>
+    <BaseNode
+      title="Output"
+      icon={<LogOut size={16} />}
+      handles={handles}
+      selected={selected}
+      darkMode={darkMode}
+    >
+      <div>
+        <label className={`block text-xs font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          Name
+        </label>
+        <input
+          type="text"
+          value={currName}
+          onChange={handleNameChange}
+          className={`w-full p-2 rounded-lg border text-sm ${
+            darkMode
+              ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:border-green-500'
+              : 'bg-gray-100 border-gray-300 text-gray-800 placeholder-gray-500 focus:border-green-500'
+          } focus:outline-none focus:ring-2 focus:ring-green-500/20`}
+        />
       </div>
       
-      <div style={{ padding: '16px' }}>
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{
-            marginBottom: '6px',
-            color: darkMode ? '#94a3b8' : '#64748b',
-            fontWeight: 500,
-            fontSize: '12px',
-          }}>
-            Name
-          </div>
-          <input 
-            type="text" 
-            value={currName} 
-            onChange={handleNameChange}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              borderRadius: '6px',
-              backgroundColor: darkMode ? '#1e293b' : '#f8fafc',
-              color: darkMode ? '#e5e7eb' : '#0f172a',
-              border: `1px solid ${darkMode ? '#334155' : '#cbd5e1'}`,
-              outline: 'none',
-              fontSize: '14px',
-            }}
-          />
-        </div>
-        
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{
-            marginBottom: '6px',
-            color: darkMode ? '#94a3b8' : '#64748b',
-            fontWeight: 500,
-            fontSize: '12px',
-          }}>
-            Type
-          </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: '6px',
-            backgroundColor: darkMode ? '#1e293b' : '#f8fafc',
-            color: darkMode ? '#e5e7eb' : '#0f172a',
-            border: `1px solid ${darkMode ? '#334155' : '#cbd5e1'}`,
-            fontSize: '14px',
-          }}>
-            Text
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 8V5H8V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M8 16V19H16V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              <rect x="4" y="8" width="16" height="8" rx="1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-        </div>
+      <div>
+        <label className={`block text-xs font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+          Export Format
+        </label>
+        <select
+          value={outputFormat}
+          onChange={handleFormatChange}
+          className={`w-full p-2 rounded-lg border text-sm ${
+            darkMode
+              ? 'bg-gray-700 border-gray-600 text-gray-200 focus:border-green-500'
+              : 'bg-gray-100 border-gray-300 text-gray-800 focus:border-green-500'
+          } focus:outline-none focus:ring-2 focus:ring-green-500/20`}
+        >
+          {formatOptions.map(format => (
+            <option key={format.value} value={format.value}>
+              {format.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{
-            marginBottom: '6px',
-            color: darkMode ? '#94a3b8' : '#64748b',
-            fontWeight: 500,
-            fontSize: '12px',
-          }}>
-            Format
-          </div>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            width: '100%',
-            padding: '10px 12px',
-            borderRadius: '6px',
-            backgroundColor: darkMode ? '#1e293b' : '#f8fafc',
-            color: darkMode ? '#e5e7eb' : '#0f172a',
-            border: `1px solid ${darkMode ? '#334155' : '#cbd5e1'}`,
-            fontSize: '14px',
-          }}>
-            JSON
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M6 9L12 15L18 9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+      {/* Export Preview */}
+      <div className={`p-3 rounded-lg border-2 border-dashed ${
+        darkMode ? 'border-gray-600 bg-gray-700/30' : 'border-gray-300 bg-gray-50'
+      }`}>
+        <div className="flex items-center space-x-2">
+          <Download size={14} className="text-green-500" />
+          <div className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+            Export Preview:
           </div>
         </div>
-
-        <div style={{
-          marginTop: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '8px',
-          borderLeft: '3px solid #10b981',
-          backgroundColor: darkMode ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
-          borderRadius: '4px',
-        }}>
-          <div style={{ marginRight: '8px', fontWeight: 500, fontSize: '12px', color: '#10b981' }}>Export:</div>
-          <div style={{ fontSize: '12px', color: darkMode ? '#94a3b8' : '#64748b' }}>output_1.json</div>
-          <svg style={{ marginLeft: 'auto' }} width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M7 10L12 15L17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            <path d="M12 15V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
+        <div className="mt-1 flex items-center space-x-2">
+          <span className={`text-sm font-mono ${currentFormat.color}`}>
+            {currName}{currentFormat.extension}
+          </span>
+          <span className={`text-xs px-2 py-1 rounded ${
+            darkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-50 text-green-600'
+          }`}>
+            {currentFormat.label}
+          </span>
         </div>
       </div>
-    </div>
+
+      {/* Format Description */}
+      <div className={`text-xs p-2 rounded ${
+        darkMode ? 'bg-green-900/30 text-green-300' : 'bg-green-50 text-green-600'
+      }`}>
+        <div className="flex items-center space-x-2">
+          <LogOut size={12} />
+          <span>Ready to export as {currentFormat.label}</span>
+        </div>
+      </div>
+    </BaseNode>
   );
-}
+};

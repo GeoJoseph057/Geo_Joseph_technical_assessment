@@ -1,0 +1,26 @@
+{
+  "nodes": [
+    {
+      "id": "1",
+      "type": "inputNode",
+      "position": {"x": 100, "y": 100},
+      "data": {"inputType": "Text", "inputName": "query", "inputValue": "What is artificial intelligence?"}
+    },
+    {
+      "id": "2", 
+      "type": "llmNode",
+      "position": {"x": 300, "y": 100},
+      "data": {"model": "gpt-3.5-turbo"}
+    },
+    {
+      "id": "3",
+      "type": "outputNode", 
+      "position": {"x": 500, "y": 100},
+      "data": {"outputName": "ai_explanation"}
+    }
+  ],
+  "edges": [
+    {"id": "e1-2", "source": "1", "target": "2"},
+    {"id": "e2-3", "source": "2", "target": "3"}
+  ]
+}
