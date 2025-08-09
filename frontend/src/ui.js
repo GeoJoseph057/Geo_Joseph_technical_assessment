@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import ReactFlow, { 
   Background, 
@@ -15,8 +16,22 @@ import { FilterNode } from './nodes/filterNode';
 import { DataFormatNode } from './nodes/dataFormatNode';
 import { NotificationNode } from './nodes/notificationNode';
 import { ZoomIn, ZoomOut, Maximize, RotateCcw, ChevronRight, ChevronLeft, Play, CheckCircle, AlertCircle, Clock } from 'lucide-react';
-
 import 'reactflow/dist/style.css';
+
+// Toast notification component
+const Toast = ({ message, onClose, darkMode }) => (
+  <div className={`fixed top-6 right-6 z-[9999] max-w-sm w-full shadow-lg rounded-lg p-4 border transition-all duration-300
+    ${darkMode ? 'bg-gray-900 border-green-700 text-green-200' : 'bg-white border-green-400 text-green-800'}`}
+    style={{ pointerEvents: 'auto' }}
+  >
+    <div className="flex items-start justify-between">
+      <div className="pr-4 whitespace-pre-line text-sm">
+        {message}
+      </div>
+      <button onClick={onClose} className="ml-2 text-lg font-bold focus:outline-none">×</button>
+    </div>
+  </div>
+);
 
 const gridSize = 20;
 const proOptions = { hideAttribution: true };
@@ -49,6 +64,12 @@ const defaultEdgeOptions = {
 };
 
 export const PipelineUI = ({ darkMode = true }) => {
+  // Toast notification state
+  const [toast, setToast] = useState({ visible: false, message: '' });
+  const showToast = (msg) => {
+    setToast({ visible: true, message: msg });
+    setTimeout(() => setToast({ visible: false, message: '' }), 6000);
+  };
   const reactFlowWrapper = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   const [showResultsPanel, setShowResultsPanel] = useState(false);
@@ -64,17 +85,18 @@ export const PipelineUI = ({ darkMode = true }) => {
   const onEdgesChange = useStore((state) => state.onEdgesChange);
   const onConnect = useStore((state) => state.onConnect);
 
-  // Auto-open results panel when input/output nodes exist
+  // Auto-open results panel only the first time an input/output node appears
+  const [autoOpenedPanel, setAutoOpenedPanel] = useState(false);
   useEffect(() => {
     const hasInputOutput = nodes.some(node => 
       node.type === 'customInput' || node.type === 'customOutput'
     );
-    if (hasInputOutput && !showResultsPanel) {
+    if (hasInputOutput && !autoOpenedPanel) {
       setShowResultsPanel(true);
+      setAutoOpenedPanel(true);
     }
-    // Note: We don't auto-close the panel when nodes are removed
-    // User can manually close it using the arrow button
-  }, [nodes, showResultsPanel]);
+    // User can always toggle the panel manually
+  }, [nodes, autoOpenedPanel]);
 
   const executePipeline = async () => {
     setIsExecuting(true);
@@ -112,11 +134,15 @@ export const PipelineUI = ({ darkMode = true }) => {
   };
 
   const getInitNodeData = (nodeID, type) => {
-    return { 
-      id: nodeID, 
-      nodeType: `${type}`,
-      darkMode 
-    };
+    return (
+      <div className={`relative w-full h-full ${darkMode ? 'dark' : ''}`}> 
+        {/* Toast notification */}
+        {toast.visible && (
+          <Toast message={toast.message} onClose={() => setToast({ visible: false, message: '' })} darkMode={darkMode} />
+        )}
+        {/* ...existing code... */}
+      </div>
+    );
   };
 
   const onDrop = useCallback(
@@ -228,14 +254,15 @@ export const PipelineUI = ({ darkMode = true }) => {
               Pipeline Results
             </h3>
             <button
-              onClick={() => setShowResultsPanel(false)}
+              onClick={() => setShowResultsPanel(!showResultsPanel)}
               className={`p-2 rounded-lg transition-colors ${
                 darkMode 
                   ? 'hover:bg-gray-800 text-gray-400 hover:text-white' 
                   : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
               }`}
+              title="Toggle Results Panel"
             >
-              <ChevronRight size={20} />
+              {showResultsPanel ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
             </button>
           </div>
         </div>
@@ -293,7 +320,7 @@ export const PipelineUI = ({ darkMode = true }) => {
                       <div className={`text-sm font-medium ${
                         darkMode ? 'text-gray-300' : 'text-gray-700'
                       }`}>
-                        {node.data?.outputName || 'Output'} ({node.data?.outputFormat || 'JSON'})
+                        {node.data?.outputName || 'Output'} ({node.data?.outputFormat || node.data?.exportFormat || 'JSON'})
                       </div>
                       <div className={`text-xs mt-1 ${
                         darkMode ? 'text-gray-400' : 'text-gray-500'

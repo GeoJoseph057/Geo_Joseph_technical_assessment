@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ToastProvider } from './toastContext';
 import { PipelineToolbar } from './toolbar';
 import { PipelineUI } from './ui';
 import { SubmitButton } from './submit';
@@ -12,82 +13,84 @@ function App() {
   const toggleDarkMode = () => setDarkMode(!darkMode);
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${
-      darkMode ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
-      {/* Header */}
-      <header className={`h-16 border-b flex items-center justify-between px-6 ${
-        darkMode 
-          ? 'bg-gray-800 border-gray-700 text-white' 
-          : 'bg-white border-gray-200 text-gray-900'
+    <ToastProvider>
+      <div className={`min-h-screen transition-colors duration-200 ${
+        darkMode ? 'bg-gray-900' : 'bg-gray-50'
       }`}>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={toggleSidebar}
-            className={`p-2 rounded-lg transition-colors ${
-              darkMode 
-                ? 'hover:bg-gray-700 text-gray-300 hover:text-white' 
-                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-          <div className="flex items-center space-x-2">
-            <img 
-              src="/Logo1.png" 
-              alt="Pipeline Builder Logo" 
-              className="w-12 h-12" 
-            />
-            <h1 className="text-xl font-bold">Pipeline Builder</h1>
+        {/* Header */}
+        <header className={`h-16 border-b flex items-center justify-between px-6 ${
+          darkMode 
+            ? 'bg-gray-800 border-gray-700 text-white' 
+            : 'bg-white border-gray-200 text-gray-900'
+        }`}>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleSidebar}
+              className={`p-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-gray-700 text-gray-300 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="flex items-center space-x-2">
+              <img 
+                src="/Logo1.png" 
+                alt="Pipeline Builder Logo" 
+                className="w-12 h-12" 
+              />
+              <h1 className="text-xl font-bold">Pipeline Builder</h1>
+            </div>
           </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={toggleDarkMode}
-            className={`p-2 rounded-lg transition-colors ${
-              darkMode 
-                ? 'hover:bg-gray-700 text-gray-300 hover:text-white' 
-                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {darkMode ? '🌙' : '☀️'}
-          </button>
-          <button
-            className={`p-2 rounded-lg transition-colors ${
-              darkMode 
-                ? 'hover:bg-gray-700 text-gray-300 hover:text-white' 
-                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Settings size={20} />
-          </button>
-        </div>
-      </header>
-
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Sidebar */}
-        <div className={`transition-all duration-300 ${
-          sidebarOpen ? 'w-80' : 'w-0'
-        } overflow-hidden`}>
-          <PipelineToolbar darkMode={darkMode} />
-        </div>
-
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1">
-            <PipelineUI darkMode={darkMode} />
+          
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleDarkMode}
+              className={`p-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-gray-700 text-gray-300 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {darkMode ? '🌙' : '☀️'}
+            </button>
+            <button
+              className={`p-2 rounded-lg transition-colors ${
+                darkMode 
+                  ? 'hover:bg-gray-700 text-gray-300 hover:text-white' 
+                  : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Settings size={20} />
+            </button>
           </div>
-          <div className={`border-t p-4 ${
-            darkMode 
-              ? 'bg-gray-800 border-gray-700' 
-              : 'bg-white border-gray-200'
-          }`}>
-            <SubmitButton darkMode={darkMode} />
+        </header>
+
+        <div className="flex h-[calc(100vh-4rem)]">
+          {/* Sidebar */}
+          <div className={`transition-all duration-300 ${
+            sidebarOpen ? 'w-80' : 'w-0'
+          } overflow-hidden`}>
+            <PipelineToolbar darkMode={darkMode} />
+          </div>
+
+          {/* Main Content */}
+          <div className="flex-1 flex flex-col">
+            <div className="flex-1">
+              <PipelineUI darkMode={darkMode} />
+            </div>
+            <div className={`border-t p-4 ${
+              darkMode 
+                ? 'bg-gray-800 border-gray-700' 
+                : 'bg-white border-gray-200'
+            }`}>
+              <SubmitButton darkMode={darkMode} />
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
 

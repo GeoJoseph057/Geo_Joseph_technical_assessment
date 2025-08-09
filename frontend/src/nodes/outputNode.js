@@ -8,6 +8,11 @@ import { BaseNode } from './BaseNode';
 export const OutputNode = ({ id, data, selected }) => {
   const [currName, setCurrName] = useState(data?.outputName || id.replace('customOutput-', 'output_'));
   const [outputFormat, setOutputFormat] = useState(data?.outputFormat || 'json');
+
+  // Sync outputFormat with node data for panel display
+  if (data && data.outputFormat !== outputFormat) {
+    data.outputFormat = outputFormat;
+  }
   const darkMode = data?.darkMode ?? true;
 
   const handleNameChange = (e) => {
@@ -16,6 +21,7 @@ export const OutputNode = ({ id, data, selected }) => {
 
   const handleFormatChange = (e) => {
     setOutputFormat(e.target.value);
+    if (data) data.outputFormat = e.target.value;
   };
 
   const handles = [
