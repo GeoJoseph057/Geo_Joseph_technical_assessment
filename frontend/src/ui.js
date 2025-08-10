@@ -237,7 +237,7 @@ export const PipelineUI = ({ darkMode = true }) => {
   };
 
   const ResultsPanel = () => (
-    <div className={`fixed top-0 right-0 h-full transition-transform duration-300 z-50 ${
+    <div className={`fixed top-16 right-0 bottom-0 transition-transform duration-300 z-50 ${
       showResultsPanel ? 'translate-x-0' : 'translate-x-full'
     }`}>
       <div className={`w-96 h-full ${
