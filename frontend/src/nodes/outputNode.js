@@ -1,18 +1,26 @@
 // outputNode.js
 
-import { useState } from 'react';
-import { Position } from 'reactflow';
+import { useState, useEffect } from 'react';
+import { Position, useReactFlow } from 'reactflow';
 import { LogOut, Download } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 
 export const OutputNode = ({ id, data, selected }) => {
+  const { setNodes } = useReactFlow();
   const [currName, setCurrName] = useState(data?.outputName || id.replace('customOutput-', 'output_'));
   const [outputFormat, setOutputFormat] = useState(data?.outputFormat || 'json');
 
-  // Sync outputFormat with node data for panel display
-  if (data && data.outputFormat !== outputFormat) {
-    data.outputFormat = outputFormat;
-  }
+  // Update node data properly when outputFormat changes
+  useEffect(() => {
+    setNodes((nodes) =>
+      nodes.map((node) =>
+        node.id === id
+          ? { ...node, data: { ...node.data, outputFormat } }
+          : node
+      )
+    );
+  }, [outputFormat, id, setNodes]);
+
   const darkMode = data?.darkMode ?? true;
 
   const handleNameChange = (e) => {
@@ -21,7 +29,6 @@ export const OutputNode = ({ id, data, selected }) => {
 
   const handleFormatChange = (e) => {
     setOutputFormat(e.target.value);
-    if (data) data.outputFormat = e.target.value;
   };
 
   const handles = [
