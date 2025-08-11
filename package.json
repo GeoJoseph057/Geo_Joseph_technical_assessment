@@ -1,0 +1,14 @@
+{
+  "name": "pipeline-builder",
+  "version": "1.0.0",
+  "description": "Frontend-only pipeline builder application",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd frontend && npm start",
+    "install": "cd frontend && npm install"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  }
+}
