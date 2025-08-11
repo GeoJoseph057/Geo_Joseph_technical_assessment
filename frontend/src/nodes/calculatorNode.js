@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Position } from 'reactflow';
 import { BaseNode } from './BaseNode';
-import { Calculator, Plus, Minus, X, Divide } from 'lucide-react';
+import { Calculator } from 'lucide-react';
 
 const CalculatorNode = ({ id, data, selected }) => {
   const [operation, setOperation] = useState(data?.operation || 'add');

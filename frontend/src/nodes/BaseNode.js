@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle } from 'reactflow';
 
 const nodeTypeColors = {
   Input: { 

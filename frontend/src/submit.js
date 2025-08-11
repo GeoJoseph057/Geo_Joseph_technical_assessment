@@ -31,14 +31,14 @@ export const SubmitButton = ({ darkMode = true }) => {
         throw new Error('No nodes in pipeline');
       }
 
-      // Mock successful execution
-      const mockResult = {
-        status: 'success',
-        nodes_processed: nodes.length,
-        edges_processed: edges.length,
-        execution_time: Math.random() * 2 + 1,
-        is_dag: true
-      };
+      // Mock successful execution - result used for internal validation
+      // const mockResult = {
+      //   status: 'success',
+      //   nodes_processed: nodes.length,
+      //   edges_processed: edges.length,
+      //   execution_time: Math.random() * 2 + 1,
+      //   is_dag: true
+      // };
 
       setStatus('success');
       if (typeof showToast === 'function') {

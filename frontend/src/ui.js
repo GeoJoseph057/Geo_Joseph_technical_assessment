@@ -294,15 +294,9 @@ export const PipelineUI = ({ darkMode = true }) => {
   };
 
   const getInitNodeData = (nodeID, type) => {
-    return (
-      <div className={`relative w-full h-full ${darkMode ? 'dark' : ''}`}> 
-        {/* Toast notification */}
-        {toast.visible && (
-          <Toast message={toast.message} onClose={() => setToast({ visible: false, message: '' })} darkMode={darkMode} />
-        )}
-        {/* ...existing code... */}
-      </div>
-    );
+    return {
+      darkMode: darkMode
+    };
   };
 
   const onDrop = useCallback(
@@ -334,7 +328,7 @@ export const PipelineUI = ({ darkMode = true }) => {
         addNode(newNode);
       }
     },
-    [reactFlowInstance, getNodeID, addNode, darkMode]
+    [reactFlowInstance, getNodeID, addNode, darkMode, getInitNodeData]
   );
 
   const onDragOver = useCallback((event) => {

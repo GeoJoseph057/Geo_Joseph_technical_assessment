@@ -6,7 +6,6 @@ import { useStore } from '../store';
 import { BaseNode } from './BaseNode';
 
 export const TextNode = ({ id, data, selected }) => {
-  const [focused, setFocused] = useState(false);
   const textareaRef = useRef(null);
   const darkMode = data?.darkMode ?? true;
   const [variables, setVariables] = useState([]);

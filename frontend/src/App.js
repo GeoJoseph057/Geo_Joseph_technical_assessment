@@ -3,7 +3,7 @@ import { ToastProvider } from './toastContext';
 import { PipelineToolbar } from './toolbar';
 import { PipelineUI } from './ui';
 import { SubmitButton } from './submit';
-import { Settings, Menu, X, Zap } from 'lucide-react';
+import { Settings, Menu, X } from 'lucide-react';
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
