@@ -100,8 +100,6 @@ export const TextNode = ({ id, data, selected }) => {
         value={data.text || ''}
         onChange={onChange}
         onKeyDown={onKeyDown}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
         placeholder="Enter text here..."
         className={`w-full p-2 rounded-lg border text-sm resize-none overflow-hidden ${
           darkMode
