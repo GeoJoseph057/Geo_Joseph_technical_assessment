@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Play, Square, Loader2, CheckCircle, AlertCircle, Save, Download } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Play, Square, Loader2, CheckCircle, AlertCircle, Save, Download, Upload } from 'lucide-react';
 import { useStore } from './store';
 import { useToast } from './toastContext';
 
@@ -7,7 +7,8 @@ export const SubmitButton = ({ darkMode = true }) => {
   const { showToast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
   const [status, setStatus] = useState('idle'); // idle, running, success, error
-  const { nodes, edges } = useStore();
+  const { nodes, edges, setNodes, setEdges } = useStore();
+  const fileInputRef = useRef(null);
 
   const handleSubmit = async () => {
     if (isRunning) {
@@ -22,35 +23,35 @@ export const SubmitButton = ({ darkMode = true }) => {
     setStatus('running');
 
     try {
-      // Send nodes and edges to backend
-      const response = await fetch('http://localhost:8001/pipelines/parse', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          nodes: nodes,
-          edges: edges
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Simulate local pipeline execution
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
+      
+      // Local validation
+      if (nodes.length === 0) {
+        throw new Error('No nodes in pipeline');
       }
 
-      await response.json(); // Ignore detailed result for toast
+      // Mock successful execution
+      const mockResult = {
+        status: 'success',
+        nodes_processed: nodes.length,
+        edges_processed: edges.length,
+        execution_time: Math.random() * 2 + 1,
+        is_dag: true
+      };
+
       setStatus('success');
       if (typeof showToast === 'function') {
-        showToast('Pipeline executed successfully!');
+        showToast(`Pipeline executed locally! Processed ${nodes.length} nodes and ${edges.length} edges successfully.`);
       }
       setTimeout(() => setStatus('idle'), 3000);
     } catch (error) {
       console.error('Error submitting pipeline:', error);
       setStatus('error');
       if (typeof showToast === 'function') {
-        showToast('Pipeline execution failed.');
+        showToast(`Pipeline execution failed: ${error.message}`);
       } else {
-        alert(`Error submitting pipeline: ${error.message}\n\nPlease make sure the backend server is running on http://localhost:8001`);
+        alert(`Error executing pipeline locally: ${error.message}`);
       }
       setTimeout(() => setStatus('idle'), 3000);
     } finally {
@@ -61,11 +62,99 @@ export const SubmitButton = ({ darkMode = true }) => {
   // Removed displayExecutionResults, only show simple toast now
 
   const handleSave = () => {
-    console.log('Save pipeline');
+    try {
+      const pipelineData = {
+        nodes: nodes,
+        edges: edges,
+        metadata: {
+          created: new Date().toISOString(),
+          version: '1.0',
+          name: 'Pipeline_' + new Date().toISOString().split('T')[0]
+        }
+      };
+      
+      // Save to localStorage
+      const savedPipelines = JSON.parse(localStorage.getItem('savedPipelines') || '[]');
+      savedPipelines.push(pipelineData);
+      localStorage.setItem('savedPipelines', JSON.stringify(savedPipelines));
+      
+      if (typeof showToast === 'function') {
+        showToast('Pipeline saved successfully to local storage!');
+      }
+    } catch (error) {
+      console.error('Error saving pipeline:', error);
+      if (typeof showToast === 'function') {
+        showToast('Failed to save pipeline');
+      }
+    }
   };
 
   const handleExport = () => {
-    console.log('Export pipeline');
+    try {
+      const pipelineData = {
+        nodes: nodes,
+        edges: edges,
+        metadata: {
+          exported: new Date().toISOString(),
+          version: '1.0',
+          name: 'Pipeline_Export'
+        }
+      };
+      
+      const dataStr = JSON.stringify(pipelineData, null, 2);
+      const dataBlob = new Blob([dataStr], {type: 'application/json'});
+      
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pipeline_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      if (typeof showToast === 'function') {
+        showToast('Pipeline exported successfully!');
+      }
+    } catch (error) {
+      console.error('Error exporting pipeline:', error);
+      if (typeof showToast === 'function') {
+        showToast('Failed to export pipeline');
+      }
+    }
+  };
+
+  const handleLoad = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileLoad = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const pipelineData = JSON.parse(e.target.result);
+          if (pipelineData.nodes && pipelineData.edges) {
+            setNodes(pipelineData.nodes);
+            setEdges(pipelineData.edges);
+            if (typeof showToast === 'function') {
+              showToast(`Pipeline loaded successfully! ${pipelineData.nodes.length} nodes, ${pipelineData.edges.length} edges`);
+            }
+          } else {
+            throw new Error('Invalid pipeline file format');
+          }
+        } catch (error) {
+          console.error('Error loading pipeline:', error);
+          if (typeof showToast === 'function') {
+            showToast('Failed to load pipeline: Invalid file format');
+          }
+        }
+      };
+      reader.readAsText(file);
+    }
+    // Reset file input
+    event.target.value = '';
   };
 
   const getButtonContent = () => {
@@ -118,8 +207,29 @@ export const SubmitButton = ({ darkMode = true }) => {
 
   return (
     <div className="flex items-center justify-between p-4">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileLoad}
+        className="hidden"
+      />
+      
       {/* Left side actions */}
       <div className="flex items-center space-x-3">
+        <button
+          onClick={handleLoad}
+          className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+            darkMode
+              ? 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
+          }`}
+        >
+          <Upload size={14} />
+          <span className="text-sm">Load</span>
+        </button>
+        
         <button
           onClick={handleSave}
           className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${

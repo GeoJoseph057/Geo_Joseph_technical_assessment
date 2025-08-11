@@ -45,6 +45,12 @@ function App() {
           </div>
           
           <div className="flex items-center space-x-4">
+            <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs ${
+              darkMode ? 'bg-green-900/30 text-green-300 border border-green-700' : 'bg-green-50 text-green-700 border border-green-200'
+            }`}>
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span>Local Mode</span>
+            </div>
             <button
               onClick={toggleDarkMode}
               className={`p-2 rounded-lg transition-colors ${
